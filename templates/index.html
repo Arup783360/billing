@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #6D5BBA, #8D58DF);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #6D5BBA;
+            color: white;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            color: white;
+        }
+        table, th, td {
+            border: 1px solid #fff;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Invoice Generator</h2>
+        
+        <!-- Form for adding/updating items -->
+        <form method="POST">
+            <input type="hidden" name="item_id" value="{{ item_to_edit['ID'] if item_to_edit else '' }}">
+            <input type="text" name="model" placeholder="Mobile Model" required value="{{ item_to_edit['Mobile Model'] if item_to_edit else '' }}">
+            <input type="text" name="quantity" placeholder="Quantity" required value="{{ item_to_edit['Quantity'] if item_to_edit else '' }}">
+            <button type="submit">{{ 'Update Item' if item_to_edit else 'Add Item' }}</button>
+        </form>
+
+        <!-- Table of items -->
+        <table>
+            <tr>
+                <th>SL Number</th>
+                <th>Mobile Model</th>
+                <th>Quantity</th>
+                <th>Actions</th>
+            </tr>
+            {% for item in items %}
+            <tr>
+                <td>{{ item['SL Number'] }}</td>
+                <td>{{ item['Mobile Model'] }}</td>
+                <td>{{ item['Quantity'] }}</td>
+                <td class="actions">
+                    <a href="{{ url_for('edit', item_id=item['ID']) }}"><button type="button">Edit</button></a>
+                    <form action="{{ url_for('delete', item_id=item['ID']) }}" method="POST" style="display:inline;">
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <!-- Export button -->
+        <form action="/export" method="GET">
+            <button type="submit">Export to Excel</button>
+        </form>
+    </div>
+</body>
+</html>
