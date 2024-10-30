@@ -1,65 +1,41 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, send_file
 import pandas as pd
-from io import BytesIO
+import io
 
 app = Flask(__name__)
-items = []  # List to hold invoice entries
-next_id = 1  # Unique ID for each entry
 
-@app.route('/', methods=['GET', 'POST'])
+# Global list to store billing items
+billing_items = []
+
+@app.route('/')
 def index():
-    global next_id
-    if request.method == 'POST':
-        # Get form data
-        item_id = request.form.get('item_id')
-        model = request.form['model']
-        quantity = request.form['quantity']
+    return render_template('index.html', billing_items=billing_items)
 
-        # Check if we are updating an existing item
-        if item_id:
-            for item in items:
-                if item['ID'] == int(item_id):
-                    item['Mobile Model'] = model
-                    item['Quantity'] = quantity
-                    break
-        else:
-            # Add new entry
-            items.append({'ID': next_id, 'SL Number': len(items) + 1, 'Mobile Model': model, 'Quantity': quantity})
-            next_id += 1
+@app.route('/add_item', methods=['POST'])
+def add_item():
+    model = request.form.get('model')
+    quantity = request.form.get('quantity')
+    # Append item to the global list with serial number
+    serial_number = len(billing_items) + 1  # Calculate the serial number
+    billing_items.append({'serial_number': serial_number, 'model': model, 'quantity': quantity})
+    return '', 204  # No content response
 
-    return render_template('index.html', items=items)
-
-@app.route('/edit/<int:item_id>', methods=['GET'])
-def edit(item_id):
-    # Find the item to edit
-    item = next((item for item in items if item['ID'] == item_id), None)
-    if item:
-        return render_template('index.html', items=items, item_to_edit=item)
-    return redirect(url_for('index'))
-
-@app.route('/delete/<int:item_id>', methods=['POST'])
-def delete(item_id):
-    global items
-    # Remove the item with the specified ID
-    items = [item for item in items if item['ID'] != item_id]
-
-    # Update SL Numbers
-    for i, item in enumerate(items):
-        item['SL Number'] = i + 1
-
-    return redirect(url_for('index'))
+@app.route('/clear_items', methods=['POST'])
+def clear_items():
+    global billing_items
+    billing_items = []  # Clear all items
+    return '', 204  # No content response
 
 @app.route('/export', methods=['GET'])
-def export():
-    # Convert list to DataFrame
-    df = pd.DataFrame(items)
-    output = BytesIO()
+def export_to_excel():
+    # Create a DataFrame from the billing items
+    df = pd.DataFrame(billing_items)
+    # Create a BytesIO buffer to save the Excel file
+    output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Invoice')
-
-    # Prepare file download response
+        df.to_excel(writer, index=False, sheet_name='Billing Items')
     output.seek(0)
-    return send_file(output, as_attachment=True, download_name='invoice.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return send_file(output, as_attachment=True, download_name='billing_items.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == '__main__':
     app.run(debug=True)
