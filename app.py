@@ -20,6 +20,27 @@ def add_item():
     billing_items.append({'serial_number': serial_number, 'model': model, 'quantity': quantity})
     return '', 204  # No content response
 
+@app.route('/edit_item', methods=['POST'])
+def edit_item():
+    serial_number = int(request.form.get('serial_number')) - 1  # Convert to index
+    model = request.form.get('model')
+    quantity = request.form.get('quantity')
+    
+    if 0 <= serial_number < len(billing_items):
+        billing_items[serial_number] = {'serial_number': serial_number + 1, 'model': model, 'quantity': quantity}
+    return '', 204  # No content response
+
+@app.route('/delete_item', methods=['POST'])
+def delete_item():
+    serial_number = int(request.form.get('serial_number')) - 1  # Convert to index
+    
+    if 0 <= serial_number < len(billing_items):
+        billing_items.pop(serial_number)
+        # Update serial numbers
+        for i, item in enumerate(billing_items):
+            item['serial_number'] = i + 1
+    return '', 204  # No content response
+
 @app.route('/clear_items', methods=['POST'])
 def clear_items():
     global billing_items
