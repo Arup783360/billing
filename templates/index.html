@@ -39,7 +39,7 @@
         <input type="number" id="quantity" placeholder="Quantity" required>
         <button type="submit">Add Item</button>
         <button type="button" id="clear-button">Clear All Items</button>
-        <a href="/export" id="export-button"><button type="button">Export to XLSX</button></a>
+        <button type="button" id="export-button" onclick="exportToExcel()">Export to XLSX</button>
     </form>
 
     <table id="billing-table">
@@ -48,6 +48,7 @@
                 <th>SL No</th>
                 <th>Mobile Model</th>
                 <th>Quantity</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="billing-list">
@@ -59,7 +60,7 @@
         const form = document.getElementById('billing-form');
         const billingList = document.getElementById('billing-list');
         const clearButton = document.getElementById('clear-button');
-        let slNo = 1;
+        let items = []; // Array to hold all added items
 
         form.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -68,14 +69,27 @@
             const quantity = document.getElementById('quantity').value;
 
             // Create a new row for the table
+            const serialNumber = items.length + 1; // Calculate serial number based on items array length
+
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${slNo++}</td><td>${model}</td><td>${quantity} pieces</td>`;
+            row.innerHTML = `
+                <td>${serialNumber}</td>
+                <td>${model}</td>
+                <td>${quantity} pieces</td>
+                <td>
+                    <button onclick="editItem(this)">Edit</button>
+                    <button onclick="deleteItem(this)">Delete</button>
+                </td>
+            `;
             billingList.appendChild(row);
+
+            // Store the item in the items array
+            items.push({ serialNumber, model, quantity });
 
             // Clear input fields
             document.getElementById('model').value = '';
             document.getElementById('quantity').value = '';
-            
+
             // Send the data to the backend
             fetch('/add_item', {
                 method: 'POST',
@@ -88,11 +102,64 @@
 
         clearButton.addEventListener('click', function() {
             billingList.innerHTML = ''; // Clear all items
-            slNo = 1; // Reset serial number
+            items = []; // Reset items array
             // Clear the billing items from the backend
             fetch('/clear_items', { method: 'POST' });
         });
+
+        function deleteItem(button) {
+            const row = button.closest('tr');
+            const serialNumber = row.cells[0].textContent; // Get SL No
+            row.remove(); // Remove row from UI
+            
+            // Remove the item from the items array
+            items = items.filter(item => item.serialNumber != serialNumber);
+
+            // Send delete request to backend
+            fetch('/delete_item', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({ serial_number: serialNumber })
+            });
+        }
+
+        function editItem(button) {
+            const row = button.closest('tr');
+            const serialNumber = row.cells[0].textContent; // Get SL No
+            const model = row.cells[1].textContent; // Get Mobile Model
+            const quantity = row.cells[2].textContent.split(' ')[0]; // Get Quantity (before "pieces")
+
+            // Set values in the form for editing
+            document.getElementById('model').value = model;
+            document.getElementById('quantity').value = quantity;
+
+            // Remove the row from the UI
+            row.remove(); // Remove row from UI
+            
+            // Remove the item from the items array
+            items = items.filter(item => item.serialNumber != serialNumber);
+        }
+
+        function exportToExcel() {
+            // Create a new workbook
+            const workbook = XLSX.utils.book_new();
+            // Create a worksheet from the items array
+            const worksheetData = items.map((item, index) => ({
+                'SL No': index + 1,
+                'Mobile Model': item.model,
+                'Quantity': item.quantity
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+            // Append the worksheet to the workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Billing Items');
+            // Export the workbook
+            XLSX.writeFile(workbook, 'billing_items.xlsx');
+        }
     </script>
 
+    <!-- Include the XLSX library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
 </body>
 </html>
